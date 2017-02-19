@@ -13,3 +13,4 @@ os:
 
 script:
   - go test
+  - go test -bench .
