@@ -17,6 +17,9 @@ func TestKuznyechik(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create kuznyechik block cipher: %s", err)
 	}
+	if k.BlockSize() != 16 {
+		t.Errorf("want BlockSize=16, got %d", k.BlockSize())
+	}
 	testCases := []struct {
 		plain, crypto string
 	}{
@@ -50,6 +53,44 @@ func TestKuznyechik(t *testing.T) {
 		if plainHEX != c.plain {
 			t.Errorf("plain for %#v: want %s, got %s", c, c.plain, plainHEX)
 		}
+	}
+}
+
+func TestBadKeyLength(t *testing.T) {
+	_, err := NewCipher(make([]byte, 64))
+	if err == nil {
+		t.Fatalf("want error, got success")
+	}
+	want := "kuznyechik key len: want 32, got 64"
+	if err.Error() != want {
+		t.Fatalf("want error text %q, got %q", want, err.Error())
+	}
+}
+
+func catchPanic(f func()) (err interface{}) {
+	defer func() {
+		err = recover()
+	}()
+	f()
+	return nil
+}
+
+func TestBadBlockLength(t *testing.T) {
+	k, err := NewCipher(make([]byte, 32))
+	if err != nil {
+		t.Fatalf("failed to create kuznyechik block cipher: %s", err)
+	}
+	e := catchPanic(func() {
+		k.Encrypt(make([]byte, 16), make([]byte, 15))
+	})
+	if e == nil {
+		t.Fatalf("Expected Encrypt with bad block length to panic")
+	}
+	e = catchPanic(func() {
+		k.Decrypt(make([]byte, 16), make([]byte, 15))
+	})
+	if e == nil {
+		t.Fatalf("Expected Decrypt with bad block length to panic")
 	}
 }
 
